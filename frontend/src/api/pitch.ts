@@ -1,15 +1,10 @@
 import type { AnalyzePitchResponse, ApiError, PitchFormData } from '../types/pitch'
 
+// Vide en prod = même origine (proxy Vercel → EC2, voir frontend/vercel.json)
 const API_BASE = (import.meta.env.VITE_API_URL ?? '').replace(/\/$/, '')
 const REQUEST_TIMEOUT_MS = 35_000
 
 export async function analyzePitch(data: PitchFormData): Promise<AnalyzePitchResponse> {
-  if (!API_BASE && import.meta.env.PROD) {
-    throw new Error(
-      'API non configurée : ajoutez VITE_API_URL sur Vercel (URL publique EC2, ex. https://api.votredomaine.com ou http://IP:8088) puis redéployez.',
-    )
-  }
-
   const controller = new AbortController()
   const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS)
 
@@ -30,7 +25,7 @@ export async function analyzePitch(data: PitchFormData): Promise<AnalyzePitchRes
       throw new Error(
         res.ok
           ? 'Réponse serveur invalide.'
-          : `Erreur ${res.status} sur ${url} : réponse non JSON (vérifiez VITE_API_URL et redéployez Vercel)`,
+          : `Erreur ${res.status} sur ${url} : réponse non JSON`,
       )
     }
 
@@ -49,6 +44,11 @@ export async function analyzePitch(data: PitchFormData): Promise<AnalyzePitchRes
   } catch (err) {
     if (err instanceof Error && err.name === 'AbortError') {
       throw new Error('La requête a expiré. Réessayez dans quelques instants.')
+    }
+    if (err instanceof TypeError) {
+      throw new Error(
+        'Impossible de joindre l\'API. Si VITE_API_URL pointe vers http://IP:8088, le navigateur bloque (HTTPS→HTTP). Supprimez VITE_API_URL sur Vercel et utilisez le proxy (vercel.json), ou passez l\'API en HTTPS.',
+      )
     }
     throw err
   } finally {
