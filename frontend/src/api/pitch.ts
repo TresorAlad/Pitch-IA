@@ -4,6 +4,12 @@ const API_BASE = (import.meta.env.VITE_API_URL ?? '').replace(/\/$/, '')
 const REQUEST_TIMEOUT_MS = 35_000
 
 export async function analyzePitch(data: PitchFormData): Promise<AnalyzePitchResponse> {
+  if (!API_BASE && import.meta.env.PROD) {
+    throw new Error(
+      'API non configurée : ajoutez VITE_API_URL sur Vercel (URL publique EC2, ex. https://api.votredomaine.com ou http://IP:8088) puis redéployez.',
+    )
+  }
+
   const controller = new AbortController()
   const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS)
 

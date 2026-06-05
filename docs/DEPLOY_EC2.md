@@ -42,9 +42,12 @@ docker compose -f docker-compose.ec2.yml logs -f
 ## 4. Vercel (frontend)
 
 1. Importer le dossier `frontend/` dans Vercel
-2. Variables d'environnement :
-   - `VITE_API_URL` = URL publique de l'API EC2 (ex. `http://IP:8088` ou `https://api.domaine.com`)
+2. Variables d'environnement (**obligatoire**, sinon erreur 404 sur Vercel) :
+   - `VITE_API_URL` = URL publique de l'API EC2 (ex. `https://api.domaine.com` ou `http://IP:8088`)
+   - **Redéployer** après toute modification (Vite injecte la variable au build)
 3. Build : `npm run build` (config par défaut Vite)
+
+> **HTTPS** : le site Vercel est en `https://`. Un appel direct vers `http://IP:8088` est souvent **bloqué** par le navigateur (mixed content). Préférez HTTPS sur l'API (Caddy + domaine) ou un reverse proxy.
 
 Voir `frontend/.env.production.example`.
 
