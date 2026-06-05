@@ -21,21 +21,19 @@ cleanup() {
 }
 trap cleanup INT TERM
 
-echo "[start] Attente du service ML..."
-i=0
-while [ "$i" -lt 90 ]; do
-  if curl -sf "http://127.0.0.1:${ML_PORT}/health" >/dev/null 2>&1; then
-    echo "[start] ML prêt."
-    break
-  fi
-  i=$((i + 1))
-  sleep 2
-done
-
-if ! curl -sf "http://127.0.0.1:${ML_PORT}/health" >/dev/null 2>&1; then
-  echo "[start] ERREUR: le service ML ne répond pas." >&2
-  exit 1
-fi
+# Attente ML en arrière-plan — l'API Go démarre tout de suite (health sur :8088)
+(
+  i=0
+  while [ "$i" -lt 120 ]; do
+    if curl -sf "http://127.0.0.1:${ML_PORT}/health" >/dev/null 2>&1; then
+      echo "[start] ML prêt."
+      exit 0
+    fi
+    i=$((i + 1))
+    sleep 2
+  done
+  echo "[start] AVERTISSEMENT: ML pas encore prêt (score indisponible temporairement)." >&2
+) &
 
 echo "[start] Démarrage API Go (port ${PORT:-8088})..."
 cd /app

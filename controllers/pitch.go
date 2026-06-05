@@ -103,11 +103,6 @@ func AnalyzePitch(w http.ResponseWriter, r *http.Request) {
 		}
 	}()
 
-	if r.Method != http.MethodPost {
-		writeError(w, http.StatusMethodNotAllowed, "Méthode non autorisée. Utilisez POST.")
-		return
-	}
-
 	r.Body = http.MaxBytesReader(w, r.Body, 10240)
 	body, err := io.ReadAll(r.Body)
 	if err != nil {

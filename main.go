@@ -11,13 +11,8 @@ import (
 )
 
 func main() {
-	// Charger les variables d'environnement depuis .env (optionnel, pour le développement local)
 	_ = godotenv.Load(".env")
 
-	// Configurer les routes
-	routes.Web()
-
-	// Lire le port depuis la variable d'environnement PORT (défaut 8088)
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = "8088"
@@ -25,11 +20,12 @@ func main() {
 
 	server := &http.Server{
 		Addr:         ":" + port,
-		Handler:      nil,
+		Handler:      routes.Handler(),
 		ReadTimeout:  15 * time.Second,
 		WriteTimeout: 90 * time.Second,
 		IdleTimeout:  60 * time.Second,
 	}
+	log.Printf("API Pitch-IA sur :%s", port)
 	if err := server.ListenAndServe(); err != nil {
 		log.Fatalf("Erreur lors du démarrage du serveur: %v", err)
 	}

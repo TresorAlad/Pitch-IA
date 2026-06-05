@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"encoding/json"
 	"net/http"
 	"os"
 	"strings"
@@ -29,7 +30,13 @@ func setCORSHeaders(w http.ResponseWriter, origin string) {
 	w.Header().Set("Access-Control-Max-Age", "86400")
 }
 
-// CORS autorise le frontend React (dev et prod).
+func writeJSON(w http.ResponseWriter, status int, payload interface{}) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(status)
+	_ = json.NewEncoder(w).Encode(payload)
+}
+
+// CORS autorise le frontend React (dev et prod) + preflight OPTIONS.
 func CORS(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		origin := r.Header.Get("Origin")
@@ -39,6 +46,30 @@ func CORS(next http.HandlerFunc) http.HandlerFunc {
 
 		if r.Method == http.MethodOptions {
 			w.WriteHeader(http.StatusNoContent)
+			return
+		}
+
+		next(w, r)
+	}
+}
+
+// WithMethod n'autorise que la méthode indiquée ; OPTIONS et réponses JSON gérés ici.
+func WithMethod(method string, next http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		origin := r.Header.Get("Origin")
+		if allowedOrigin(origin) {
+			setCORSHeaders(w, origin)
+		}
+
+		if r.Method == http.MethodOptions {
+			w.WriteHeader(http.StatusNoContent)
+			return
+		}
+
+		if r.Method != method {
+			writeJSON(w, http.StatusMethodNotAllowed, map[string]string{
+				"error": "Méthode non autorisée. Utilisez " + method + ".",
+			})
 			return
 		}
 

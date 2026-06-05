@@ -35,11 +35,14 @@ export async function analyzePitch(data: PitchFormData): Promise<AnalyzePitchRes
     }
 
     if (!res.ok) {
-      const message =
+      const apiMsg =
         payload && typeof payload === 'object' && 'error' in payload
           ? String((payload as ApiError).error)
-          : `Erreur ${res.status}: ${res.statusText || 'une erreur est survenue'}`
-      throw new Error(message || 'Une erreur est survenue.')
+          : ''
+      const message =
+        apiMsg ||
+        `Erreur ${res.status} sur ${url}${res.statusText ? ` (${res.statusText})` : ''}`
+      throw new Error(message)
     }
 
     return payload as AnalyzePitchResponse
