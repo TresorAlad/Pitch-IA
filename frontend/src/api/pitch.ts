@@ -13,8 +13,10 @@ export async function analyzePitch(data: PitchFormData): Promise<AnalyzePitchRes
   const controller = new AbortController()
   const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS)
 
+  const url = `${API_BASE}/api/analyze-pitch`
+
   try {
-    const res = await fetch(`${API_BASE}/api/analyze-pitch`, {
+    const res = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
@@ -28,7 +30,7 @@ export async function analyzePitch(data: PitchFormData): Promise<AnalyzePitchRes
       throw new Error(
         res.ok
           ? 'Réponse serveur invalide.'
-          : `Erreur ${res.status}: ${res.statusText || 'réponse non JSON'}`,
+          : `Erreur ${res.status} sur ${url} : réponse non JSON (vérifiez VITE_API_URL et redéployez Vercel)`,
       )
     }
 
