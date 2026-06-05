@@ -3,9 +3,9 @@ package routes
 import (
 	"net/http"
 	"pitch/controllers"
+	"pitch/middleware"
 )
 
-// loggingMiddleware gère les requêtes HTTP avec protection contre les panics
 func loggingMiddleware(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		defer func() {
@@ -17,21 +17,13 @@ func loggingMiddleware(next http.HandlerFunc) http.HandlerFunc {
 	}
 }
 
-// HealthCheck endpoint pour vérifier que l'application fonctionne
 func HealthCheck(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	w.Write([]byte(`{"status":"ok","service":"pitch-ia"}`))
+	w.Write([]byte(`{"status":"ok","service":"pitch-ia-api"}`))
 }
 
-// Web configure toutes les routes de l'application
 func Web() {
-	// Health check (pour Render/Vercel)
-	http.HandleFunc("/health", HealthCheck)
-
-	// Page d'accueil (GET)
-	http.HandleFunc("/", loggingMiddleware(controllers.Pitch))
-
-	// Traitement du formulaire (POST)
-	http.HandleFunc("/analyze-pitch", loggingMiddleware(controllers.AnalyzePitch))
+	http.HandleFunc("/health", middleware.CORS(HealthCheck))
+	http.HandleFunc("/api/analyze-pitch", middleware.CORS(loggingMiddleware(controllers.AnalyzePitch)))
 }

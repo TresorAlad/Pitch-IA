@@ -1,0 +1,25 @@
+# Déploiement EC2 : un seul conteneur (API Go + ML)
+# Frontend : Vercel (voir docs/DEPLOY_EC2.md)
+
+services:
+  pitch-ia:
+    build:
+      context: .
+      dockerfile: Dockerfile.ec2
+    image: pitch-ia:ec2
+    container_name: pitch-ia
+    restart: unless-stopped
+    ports:
+      - "8088:8088"
+    env_file:
+      - .env
+    environment:
+      - PORT=8088
+      - ML_PORT=8090
+      - ML_SERVICE_URL=http://127.0.0.1:8090
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://127.0.0.1:8088/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 120s

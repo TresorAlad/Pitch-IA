@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"os"
 	"pitch/routes"
+	"time"
 
 	"github.com/joho/godotenv"
 )
@@ -16,14 +17,20 @@ func main() {
 	// Configurer les routes
 	routes.Web()
 
-	// Lire le port depuis la variable d'environnement PORT
-	// Render/Vercel définissent automatiquement cette variable
+	// Lire le port depuis la variable d'environnement PORT (défaut 8088)
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = "8088"
 	}
 
-	if err := http.ListenAndServe(":"+port, nil); err != nil {
-		log.Fatalf(" Erreur lors du démarrage du serveur: %v", err)
+	server := &http.Server{
+		Addr:         ":" + port,
+		Handler:      nil,
+		ReadTimeout:  15 * time.Second,
+		WriteTimeout: 90 * time.Second,
+		IdleTimeout:  60 * time.Second,
+	}
+	if err := server.ListenAndServe(); err != nil {
+		log.Fatalf("Erreur lors du démarrage du serveur: %v", err)
 	}
 }

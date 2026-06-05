@@ -16,17 +16,17 @@ RUN go build -o pitch
 # Image finale
 FROM alpine:latest
 
-RUN apk --no-cache add ca-certificates
+RUN apk --no-cache add ca-certificates wget
 
 WORKDIR /root/
 
 # Copier le binaire compilé
 COPY --from=builder /app/pitch .
-COPY --from=builder /app/views ./views
 
-# Exposer le port
-EXPOSE 8080
+ENV PORT=8088
+ENV ML_SERVICE_URL=http://ml-service:8090
 
-# Commande de démarrage
+EXPOSE 8088
+
 CMD ["./pitch"]
 

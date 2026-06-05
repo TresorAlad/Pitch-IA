@@ -1,93 +1,162 @@
-# 🚀 Pitch-IA - Générateur de Pitch Intelligent
+# 🚀 Pitch-IA - Brouillon de pitch intelligent (UEMOA)
 
-Pitch-IA est une application web moderne développée en **Go** qui utilise l'intelligence artificielle (**OpenAI**) pour transformer une simple idée de projet en un pitch structuré, professionnel et convaincant.
+Pitch-IA transforme une idée de projet en **brouillon de pitch structuré en 6 sections** et un **score de viabilité ML**, pensé pour les fondateurs **Afrique de l'Ouest (UEMOA)**.
 
+> One-pager incubateurs : [`docs/ONE_PAGER_INCUBATEURS.md`](docs/ONE_PAGER_INCUBATEURS.md)
+
+![React](https://img.shields.io/badge/React-61DAFB?style=for-the-badge&logo=react&logoColor=black)
 ![Go](https://img.shields.io/badge/Go-00ADD8?style=for-the-badge&logo=go&logoColor=white)
-![OpenAI](https://img.shields.io/badge/OpenAI-412991?style=for-the-badge&logo=openai&logoColor=white)
+![Groq](https://img.shields.io/badge/Groq-000000?style=for-the-badge&logo=data:image/svg+xml&logoColor=white)
 ![TailwindCSS](https://img.shields.io/badge/Tailwind_CSS-38B2AC?style=for-the-badge&logo=tailwind-css&logoColor=white)
 
-## ✨ Fonctionnalités
+## Architecture
 
-*   **Analyse Contextuelle** : Transforme une description courte en un argumentaire complet.
-*   **Structure Professionnelle** : Génère automatiquement les 6 sections clés :
-    1.  **Problème** : Identification claire du besoin.
-    2.  **Solution** : Proposition concrète.
-    3.  **Marché** : Ciblage et opportunités.
-    4.  **Valeur Unique** : Pourquoi votre projet se démarque.
-    5.  **Canaux** : Stratégie d'acquisition.
-    6.  **Modèle Économique** : Comment le projet génère des revenus.
-*   **Interface Réactive** : Design moderne avec Tailwind CSS, optimisé pour mobile et desktop.
-*   **Robuste** : Gestion des erreurs, retries automatiques et protection contre les timeouts.
+```text
+frontend/ (React + Vite)  →  app/ (API Go)  →  Groq (pitch + insights) + ml-service/ (score)
+```
 
-## 🛠️ Stack Technique
+| Couche | Technologie | Rôle |
+|--------|-------------|------|
+| Frontend | React 19, Vite, TypeScript, Tailwind | UI, formulaire, jauge ML, résultats |
+| API | Go 1.22 | REST JSON, orchestration IA + ML |
+| IA | Groq API (`llama-3.3-70b-versatile`) | Génération des 6 sections de pitch + insights consultant |
+| ML | LightGBM, spaCy, SHAP, MLflow, Beautiful Soup | Score, NLP FR, explications, tracking |
 
-*   **Backend** : Go (Golang) 1.22+
-*   **Frontend** : HTML5, Tailwind CSS, FontAwesome
-*   **IA** : OpenAI API (GPT-3.5 Turbo / GPT-4)
-*   **Déploiement** : Support natif pour Docker, Render et Vercel
+## Fonctionnalités
 
-## 🚀 Installation Locale
+* Contexte UEMOA (pays, secteur, public cible)
+* Orchestration automatique : pitch + insights (Groq) et score LightGBM ; si Groq échoue, secours ML (SHAP + spaCy + données marché UEMOA, pas de texte générique)
+* Score de réussite **LightGBM** avec analyse **spaCy (FR)**
+* Facteurs explicatifs automatiques via **SHAP**
+* Données marché UEMOA via **Beautiful Soup**
+* Suivi des entraînements via **MLflow** (`ml-service/mlruns/`)
+* Interface React responsive
+
+## Installation locale
 
 ### Prérequis
 
-*   [Go](https://golang.org/doc/install) installé sur votre machine.
-*   Une clé API [OpenAI](https://platform.openai.com/api-keys).
+* Go 1.22+, Node.js 20+, Python 3.12+
+* Clé API [Groq](https://console.groq.com/keys)
 
-### Étapes
+### Option A - Docker Compose (recommandé)
 
-1.  **Cloner le dépôt** :
-    ```bash
-    git clone https://github.com/votre-username/Pitch-IA.git
-    cd Pitch-IA
-    ```
+Une commande lance **ML + API Go + frontend** — pas besoin de `go run` ni `npm run dev`.
 
-2.  **Configurer l'environnement** :
-    Créez un fichier `.env` à la racine du projet :
-    ```env
-    OPENAI_API_KEY=votre_cle_sk_...
-    PORT=8088
-    ```
+```bash
+cp .env.example .env
+# Renseigner GROQ_API_KEY dans .env
+docker compose up --build -d
+# ou : bash scripts/docker-up.sh
+```
 
-3.  **Installer les dépendances** :
-    ```bash
-    go mod download
-    ```
+| URL | Rôle |
+|-----|------|
+| [http://localhost:3000](http://localhost:3000) | Application (nginx → API) |
+| [http://localhost:8090/health](http://localhost:8090/health) | ML (debug) |
 
-4.  **Lancer l'application** :
-    ```bash
-    go run main.go
-    ```
-    L'application sera accessible sur `http://localhost:8088`.
+```bash
+docker compose logs -f    # suivre les logs
+docker compose down       # arrêter
+```
 
-## 📦 Structure du Projet
+> Arrêtez un `go run main.go` local avant Docker si le port 8088 est occupé sur l'hôte (le conteneur API n'expose pas 8088 vers l'hôte, seul le frontend sur 3000).
+
+### Production : EC2 (backend) + Vercel (frontend)
+
+Un **seul conteneur** sur EC2 (API Go + ML). Le frontend React est sur Vercel.
+
+```bash
+cp .env.ec2.example .env
+# Renseigner GROQ_API_KEY, GROQ_MODEL (llama-3.3-70b-versatile) et CORS_ORIGINS (URL Vercel)
+docker compose -f docker-compose.ec2.yml up -d --build
+```
+
+Sur Vercel : variable `VITE_API_URL` = URL publique de l'API (HTTPS, sans slash final).
+
+Guide détaillé : [docs/DEPLOY_EC2.md](docs/DEPLOY_EC2.md)
+
+### Option B - Développement (3 terminaux)
+
+**Terminal 1 - ML (Python 3.12 requis pour MLflow) :**
+```bash
+cd ml-service
+bash scripts/setup-venv.sh   # crée .venv 3.12 + MLflow + entraîne le modèle
+source .venv/bin/activate
+uvicorn main:app --port 8090
+```
+
+**UI MLflow** (visualiser les runs) :
+```bash
+cd ml-service && source .venv/bin/activate
+mlflow ui --backend-store-uri mlruns --port 5000
+# → http://localhost:5000
+```
+
+**Terminal 2 - API Go :**
+```bash
+cp .env.example .env
+go run main.go
+```
+
+**Terminal 3 - Frontend React :**
+```bash
+cd frontend && npm install && npm run dev
+```
+
+Frontend : `http://localhost:5173` (proxy `/api` → `:8088`)
+
+## Structure du projet
 
 ```text
 .
-├── main.go           # Point d'entrée de l'application
-├── controllers/      # Logique de traitement des requêtes
-├── models/           # Définition des structures de données
-├── routes/           # Définition des points d'accès HTTP
-├── service/          # Intégration OpenAI et logique métier
-├── views/            # Templates HTML (Frontend)
-├── Dockerfile        # Configuration pour la conteneurisation
-├── render.yaml       # Configuration pour le déploiement sur Render
-└── vercel.json       # Configuration pour le déploiement sur Vercel
+├── frontend/           # React + Vite + Tailwind
+│   ├── src/
+│   │   ├── api/      # Client REST
+│   │   ├── components/
+│   │   └── types/
+│   └── Dockerfile    # nginx (prod)
+├── controllers/      # Handlers API JSON
+├── middleware/       # CORS
+├── models/
+├── routes/
+├── service/          # Groq + client ML
+├── ml-service/       # Microservice Python
+│   ├── scripts/setup-venv.sh  # venv Python 3.12 + MLflow
+│   ├── ml/mlflow_tracker.py
+│   ├── mlruns/              # Historique MLflow (généré)
+├── docker-compose.yml
+└── Dockerfile        # API Go
 ```
 
-## 🌐 Déploiement
+## API
 
-### Render
-Le projet inclut un fichier `render.yaml`. Liez simplement votre dépôt GitHub à Render et il détectera automatiquement la configuration. **N'oubliez pas d'ajouter la variable d'environnement `OPENAI_API_KEY`**.
+### `POST /api/analyze-pitch`
 
-### Docker
-```bash
-docker build -t pitch-ia .
-docker run -p 8088:8088 -e OPENAI_API_KEY=votre_cle pitch-ia
+```json
+{
+  "country": "ci",
+  "sector": "FinTech",
+  "audience": "investisseur",
+  "description": "Plateforme de micro-crédit Mobile Money..."
+}
 ```
 
-## 📄 Licence
+### `GET /market-data` (ml-service)
 
-Distribué sous la licence MIT. Voir `LICENSE` pour plus d'informations.
+Données marché parsées depuis `ml-service/data/market_uemoa.html` avec **Beautiful Soup**.
+Query params optionnels : `?country=ci&sector=FinTech`
 
----
-⭐ Si ce projet vous aide, n'hésitez pas à lui donner une étoile sur GitHub !
+### `GET /health`
+
+Health check de l'API Go.
+
+## Déploiement
+
+- **Docker Compose** : stack complète (frontend + API + ML) en local
+- **EC2** : backend mono-conteneur (API Go + ML) — voir [docs/DEPLOY_EC2.md](docs/DEPLOY_EC2.md)
+- **Vercel** : frontend React ; `VITE_API_URL` pointe vers l'API EC2 (HTTPS)
+
+## Licence
+
+MIT

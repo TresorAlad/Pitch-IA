@@ -1,0 +1,43 @@
+services:
+  ml-service:
+    build: ./ml-service
+    ports:
+      - "8090:8090"
+    environment:
+      - PORT=8090
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8090/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  app:
+    build: .
+    expose:
+      - "8088"
+    env_file:
+      - .env
+    environment:
+      - PORT=8088
+      - ML_SERVICE_URL=http://ml-service:8090
+      - GROQ_API_KEY=${GROQ_API_KEY}
+      - GROQ_MODEL=${GROQ_MODEL:-llama-3.3-70b-versatile}
+      - CORS_ORIGINS=http://localhost:5173,http://localhost:3000
+      - TECH_TRENDS_OFFLINE=${TECH_TRENDS_OFFLINE:-false}
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:8088/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    depends_on:
+      ml-service:
+        condition: service_healthy
+
+  frontend:
+    build: ./frontend
+    ports:
+      - "3000:80"
+    depends_on:
+      app:
+        condition: service_healthy

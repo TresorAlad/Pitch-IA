@@ -2,8 +2,6 @@ package service
 
 import (
 	"context"
-	"fmt"
-	"os"
 	"pitch/models"
 	"regexp"
 	"strings"
@@ -12,18 +10,26 @@ import (
 	openai "github.com/sashabaranov/go-openai"
 )
 
-// GenerationwithAI appelle OpenAI et parse la réponse en PitchResponse avec retry.
-func GenerationwithAI(input string) *models.PitchResponse {
-	apiKey := os.Getenv("OPENAI_API_KEY")
+var (
+	headerRegex       = regexp.MustCompile(`^\s*(\d+)\s*[\.\)]\s*(?:\[([^\]]+)\]|([^:\-–—\[]+?))\s*[:\-–—]?\s*(.*)$`)
+	simpleHeaderRegex = regexp.MustCompile(`^\s*(\d+)\s*[\.\)]\s*([^\d]+)$`)
+	sectionStartRegex = regexp.MustCompile(`(\d+)\s*[\.\)]\s*(?:\[([^\]]+)\]|([^:\-–—\[]+?))\s*[:\-–—]?\s*`)
+)
+
+// GenerationWithAI appelle Groq (Mixtral) et parse la réponse en PitchResponse avec retry.
+func GenerationWithAI(pitchCtx models.PitchContext) *models.PitchResponse {
+	if strings.TrimSpace(pitchCtx.Description) == "" {
+		return nil
+	}
+
+	apiKey := aiAPIKey()
 	if apiKey == "" {
 		return nil
 	}
 
-	client := openai.NewClient(apiKey)
-
-	system := "Tu es un assistant spécialisé dans la création de pitchs structurés. Tu dois TOUJOURS répondre dans un format STRICT avec 6 sections numérotées en français. Chaque section doit être sur SA PROPRE LIGNE, commençant par le numéro suivi d'un point, puis le label entre crochets, puis le contenu. EXEMPLE DE FORMAT OBLIGATOIRE:\n\n1. [Problème] Texte du problème ici\n2. [Solution] Texte de la solution ici\n3. [Marché] Texte du marché ici\n4. [Valeur] Texte de la valeur ici\n5. [Canaux] Texte des canaux ici\n6. [Modèle] Texte du modèle ici\n\nIMPORTANT: Ne mets RIEN avant la première section. Ne mets RIEN après la dernière section. Une seule section par ligne. Utilise EXACTEMENT ce format avec les numéros, points, crochets et labels en français."
-
-	prompt := fmt.Sprintf("Génère un pitch structuré pour ce projet en utilisant EXACTEMENT le format ci-dessous (une ligne par section) :\n\n1. [Problème] Décris le problème spécifique que ce projet résout\n2. [Solution] Décris la solution concrète que ce projet apporte\n3. [Marché] Décris le marché cible et l'opportunité\n4. [Valeur] Décris la proposition de valeur unique\n5. [Canaux] Décris les canaux de distribution/acquisition\n6. [Modèle] Décris le modèle économique\n\nDescription du projet : %s\n\nRéponds UNIQUEMENT avec les 6 lignes au format ci-dessus, sans texte avant ou après.", input)
+	client := newAIClient(apiKey)
+	system := buildSystemPrompt()
+	prompt := buildUserPrompt(pitchCtx)
 
 	// Tentative avec retry (max 3 tentatives)
 	maxRetries := 3
@@ -33,13 +39,11 @@ func GenerationwithAI(input string) *models.PitchResponse {
 			time.Sleep(time.Duration(attempt) * time.Second) // Délai progressif
 		}
 
-		// Timeout réduit à 25 secondes pour éviter les timeouts Render/Vercel (qui sont souvent à 30s)
-		ctx, cancel := context.WithTimeout(context.Background(), 25*time.Second)
-		defer cancel()
-		
-		modelName := "gpt-3.5-turbo"
+		// Timeout réduit à 25 secondes pour rester sous les limites proxy (souvent ~30s)
+		reqCtx, cancel := context.WithTimeout(context.Background(), 25*time.Second)
+		modelName := aiModel()
 		resp, err := client.CreateChatCompletion(
-			ctx,
+			reqCtx,
 			openai.ChatCompletionRequest{
 				Model: modelName,
 				Messages: []openai.ChatCompletionMessage{
@@ -53,10 +57,11 @@ func GenerationwithAI(input string) *models.PitchResponse {
 					},
 				},
 				Temperature: 0.7, // Température pour des réponses plus consistantes
-				MaxTokens:   1000, // Limiter les tokens pour des réponses plus rapides
+				MaxTokens:   1100,
 			},
 		)
-		
+		cancel()
+
 		if err != nil {
 			errStr := err.Error()
 			
@@ -110,32 +115,12 @@ func GenerationwithAI(input string) *models.PitchResponse {
 			filledCount++
 		}
 
-		// Si toutes les sections sont vides, c'est un échec de parsing - retry
-		if filledCount == 0 {
+		// Exiger les 6 sections réelles (pas de texte placeholder)
+		if filledCount < 6 {
 			if attempt < maxRetries {
 				continue
 			}
 			return nil
-		}
-
-		// Si certaines sections restent vides, remplir avec une suggestion minimale basée sur l'entrée
-		if parsed.Probleme == "" {
-			parsed.Probleme = "Problème à définir basé sur votre description."
-		}
-		if parsed.Solution == "" {
-			parsed.Solution = "Solution à développer selon votre projet."
-		}
-		if parsed.Marche == "" {
-			parsed.Marche = "Marché cible à identifier."
-		}
-		if parsed.Valeur == "" {
-			parsed.Valeur = "Proposition de valeur unique à définir."
-		}
-		if parsed.Canaux == "" {
-			parsed.Canaux = "Canaux de distribution à mettre en place."
-		}
-		if parsed.Modele == "" {
-			parsed.Modele = "Modèle économique : freemium + abonnement premium ou commissions selon le service."
 		}
 
 		return parsed
@@ -179,15 +164,6 @@ func parseAIResponse(content string) *models.PitchResponse {
 		return ""
 	}
 
-	// Regex pour détecter les en-têtes numérotés: "1. [Label]" ou "1. Label" ou "1) Label"
-	// Pattern amélioré pour extraire correctement le label entre crochets
-	// Groupe 1: numéro, Groupe 2: label entre crochets (optionnel), Groupe 3: label sans crochets (si pas de crochets), Groupe 4: contenu
-	headerRegex := regexp.MustCompile(`^\s*(\d+)\s*[\.\)]\s*(?:\[([^\]]+)\]|([^:\-–—\[]+?))\s*[:\-–—]?\s*(.*)$`)
-
-	// Regex alternative plus simple pour détecter juste les numéros suivis de labels
-	// On utilise [^\d] au lieu de [^0-9\n] car c'est plus simple pour RE2
-	simpleHeaderRegex := regexp.MustCompile(`^\s*(\d+)\s*[\.\)]\s*([^\d]+)$`)
-
 	var currentSection string
 	var currentContent []string
 
@@ -225,9 +201,6 @@ func parseAIResponse(content string) *models.PitchResponse {
 			}
 		}
 	}
-
-	// Regex pour détecter le début d'une section (sans lookahead - compatible RE2)
-	sectionStartRegex := regexp.MustCompile(`(\d+)\s*[\.\)]\s*(?:\[([^\]]+)\]|([^:\-–—\[]+?))\s*[:\-–—]?\s*`)
 
 	// Parcourir toutes les lignes
 	for _, line := range lines {
@@ -424,24 +397,4 @@ func parseAIResponse(content string) *models.PitchResponse {
 	}
 
 	return result
-}
-
-// GeneratePitchResponse retourne un PitchResponse mocké basé sur l'entrée.
-// Cette fonction est utilisée par le handler en mode démo (sans OpenAI).
-func GeneratePitchResponse(input string) *models.PitchResponse {
-	probleme := fmt.Sprintf("Les utilisateurs rencontrent %s, ce qui crée une friction dans le parcours.", input)
-	solution := fmt.Sprintf("Nous proposons une solution simple et intuitive basée sur %s, améliorant la conversion.", input)
-	marche := "Étudiants urbains 18-30 ans, utilisateurs mobiles cherchant commodité."
-	valeur := "Gain de temps, personnalisation et prix attractif."
-	canaux := "Réseaux sociaux, partenariats campus, campagnes locales."
-	modele := "Freemium + abonnement premium + commissions."
-
-	return &models.PitchResponse{
-		Probleme: probleme,
-		Solution: solution,
-		Marche:   marche,
-		Valeur:   valeur,
-		Canaux:   canaux,
-		Modele:   modele,
-	}
 }

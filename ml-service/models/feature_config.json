@@ -1,0 +1,63 @@
+{
+  "model": "LightGBM",
+  "categorical": [
+    "country",
+    "sector",
+    "audience"
+  ],
+  "numeric": [
+    "desc_len",
+    "word_count",
+    "sentence_count",
+    "entity_count",
+    "money_entity_count",
+    "org_entity_count",
+    "business_term_score",
+    "quality_score"
+  ],
+  "features": [
+    "country",
+    "sector",
+    "audience",
+    "desc_len",
+    "word_count",
+    "sentence_count",
+    "entity_count",
+    "money_entity_count",
+    "org_entity_count",
+    "business_term_score",
+    "quality_score"
+  ],
+  "countries": [
+    "bf",
+    "bj",
+    "ci",
+    "gw",
+    "ml",
+    "ne",
+    "sn",
+    "tg",
+    "uemoa"
+  ],
+  "sectors": [
+    "AgriTech",
+    "Autre",
+    "CleanTech",
+    "E-commerce",
+    "EdTech",
+    "FinTech",
+    "FoodTech",
+    "HealthTech",
+    "LogisTech",
+    "Mobility",
+    "SaaS B2B"
+  ],
+  "audiences": [
+    "client",
+    "incubateur",
+    "investisseur",
+    "partenaire"
+  ],
+  "nlp": "spacy-fr_core_news_sm",
+  "explainer": "shap"
+}
