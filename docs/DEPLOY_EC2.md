@@ -50,15 +50,13 @@ Dans **Project Settings → General** :
 | Build Command | `npm run build` |
 | Output Directory | `dist` |
 
-Variables (**Settings → Environment Variables**) :
+**Proxy Vercel (recommandé)** — évite « Failed to fetch » (blocage HTTPS→HTTP) :
 
-- `VITE_API_URL` = `http://IP_PUBLIQUE_EC2:8088` (sans `/api`, sans slash final)
-- Cochez **Production** et **Preview**
-- **Redéployer** après chaque changement (obligatoire : Vite compile la variable au build)
+1. Éditer `frontend/vercel.json` : IP EC2 dans les rewrites (`13.53.84.222` → la vôtre)
+2. Sur Vercel : **supprimer** `VITE_API_URL` (le frontend appelle `/api/...` sur le même domaine)
+3. **Redéployer**
 
-> Ne pas utiliser l’ancien `vercel.json` Go à la racine : l’API tourne sur EC2, pas sur Vercel.
-
-> **HTTPS** : le site Vercel est en `https://`. Un appel direct vers `http://IP:8088` est souvent **bloqué** par le navigateur (mixed content). Préférez HTTPS sur l'API (Caddy + domaine) ou un reverse proxy.
+Alternative : API en HTTPS (`VITE_API_URL=https://api.domaine.com` + Caddy sur EC2).
 
 Voir `frontend/.env.production.example`.
 
