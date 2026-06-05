@@ -2,6 +2,7 @@ import { ArrowRight, Loader2 } from 'lucide-react'
 import { useState } from 'react'
 import type { PitchFormData } from '../../types/pitch'
 import { AUDIENCE_OPTIONS, COUNTRY_OPTIONS, SECTOR_OPTIONS } from '../../constants/form-options'
+import { buildContextChips } from '../../utils/context-label'
 import { DescriptionField } from '../DescriptionField'
 import { SelectField } from '../SelectField'
 import { HeroPanel } from './HeroPanel'
@@ -20,6 +21,7 @@ const DEFAULT_FORM: PitchFormData = {
 
 export function LandingView({ isLoading, onSubmit }: LandingViewProps) {
   const [form, setForm] = useState<PitchFormData>(DEFAULT_FORM)
+  const selectionChips = buildContextChips(form)
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -73,6 +75,16 @@ export function LandingView({ isLoading, onSubmit }: LandingViewProps) {
               disabled={isLoading}
             />
           </div>
+
+          {selectionChips.length > 0 && (
+            <div className="form-selection-chips" role="list" aria-label="Options sélectionnées">
+              {selectionChips.map((chip) => (
+                <span key={chip} className="form-selection-chip" role="listitem">
+                  {chip}
+                </span>
+              ))}
+            </div>
+          )}
 
           <DescriptionField
             value={form.description}

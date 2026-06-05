@@ -7,13 +7,15 @@ import {
   TrendingDown,
   TrendingUp,
 } from 'lucide-react'
-import type { AnalyzePitchResponse } from '../../types/pitch'
+import type { AnalyzePitchResponse, PitchFormData } from '../../types/pitch'
 import { PITCH_SECTIONS } from '../../constants/form-options'
+import { buildContextChips, buildContextLabel } from '../../utils/context-label'
 import { CardPitchSection } from '../CardPitchSection'
 import { ConsultantInsightsCard } from '../ConsultantInsightsCard'
 
 interface ResultsViewProps {
   data: AnalyzePitchResponse
+  form: PitchFormData
   onReset: () => void
 }
 
@@ -128,17 +130,16 @@ function ScoreGauge({ score }: { score: number }) {
   )
 }
 
-export function ResultsView({ data, onReset }: ResultsViewProps) {
+export function ResultsView({ data, form, onReset }: ResultsViewProps) {
   const [copiedAll, setCopiedAll] = useState(false)
   const score = data.successScore
-  const contextParts = data.contextLabel
-    ? data.contextLabel.split('·').map((s) => s.trim()).filter(Boolean)
-    : []
+  const contextParts = buildContextChips(form)
+  const contextLabel = buildContextLabel(form) || data.contextLabel
   const confLabel = confidenceLabel(data.confidence)
 
   async function handleCopyAll() {
     const lines = ['PITCH-IA — Brouillon de pitch', '']
-    if (data.contextLabel) lines.push(`Contexte : ${data.contextLabel}`, '')
+    if (contextLabel) lines.push(`Contexte : ${contextLabel}`, '')
     PITCH_SECTIONS.forEach((s) => lines.push(`${s.title}\n${data[s.key]}`, ''))
     const ins = data.consultantInsights
     if (ins) {

@@ -10,10 +10,12 @@ function App() {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState('')
   const [result, setResult] = useState<AnalyzePitchResponse | null>(null)
+  const [submittedForm, setSubmittedForm] = useState<PitchFormData | null>(null)
 
   async function handleSubmit(data: PitchFormData) {
     setError('')
     setIsLoading(true)
+    setSubmittedForm(data)
     try {
       const response = await analyzePitch(data)
       setResult(response)
@@ -27,15 +29,16 @@ function App() {
 
   function handleReset() {
     setResult(null)
+    setSubmittedForm(null)
     setError('')
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
-  if (result) {
+  if (result && submittedForm) {
     return (
       <AppShell>
         <AlertError message={error} />
-        <ResultsView data={result} onReset={handleReset} />
+        <ResultsView data={result} form={submittedForm} onReset={handleReset} />
       </AppShell>
     )
   }

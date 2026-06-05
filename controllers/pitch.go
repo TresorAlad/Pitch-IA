@@ -34,8 +34,8 @@ var allowedAudiences = map[string]bool{
 
 var audienceLabels = map[string]string{
 	"investisseur": "Investisseur",
-	"client":       "Client",
-	"partenaire":   "Partenaire",
+	"client":       "Client final",
+	"partenaire":   "Partenaire B2B",
 	"incubateur":   "Incubateur / jury",
 }
 

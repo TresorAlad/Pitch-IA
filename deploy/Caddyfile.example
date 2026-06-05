@@ -1,0 +1,12 @@
+# Exemple Caddy sur l'hôte EC2 (hors Docker) — HTTPS gratuit avec Let's Encrypt
+# Prérequis : domaine api.votredomaine.com → IP publique EC2 (DNS A record)
+#
+# sudo apt install caddy
+# sudo cp deploy/Caddyfile.example /etc/caddy/Caddyfile
+# sudo systemctl reload caddy
+#
+# Puis sur Vercel : VITE_API_URL=https://api.votredomaine.com (supprimer le proxy vercel.json)
+
+api.votredomaine.com {
+	reverse_proxy localhost:8088
+}

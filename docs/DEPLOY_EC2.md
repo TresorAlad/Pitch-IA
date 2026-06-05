@@ -70,7 +70,37 @@ https://votre-projet.vercel.app
 
 Pour les previews Vercel, ajoutez chaque URL ou un domaine custom.
 
-## 6. HTTPS (recommandé)
+## 6. Dépannage « 502 » sur Vercel (proxy)
+
+Le proxy `frontend/vercel.json` renvoie **502** si Vercel **ne peut pas joindre** l'EC2.
+
+**Vérifications (dans l'ordre) :**
+
+```bash
+# Sur la VM — API locale OK ?
+curl http://localhost:8088/health
+
+# IP publique actuelle (console AWS → Public IPv4)
+curl http://IP_PUBLIQUE:8088/health
+
+# Depuis votre PC (pas la VM)
+curl http://IP_PUBLIQUE:8088/health
+
+# Via le proxy Vercel
+curl https://pitch-ia.vercel.app/health
+```
+
+| Symptôme | Cause | Action |
+|----------|-------|--------|
+| Local OK, IP publique KO | Security Group / `ufw` | Ouvrir **TCP 8088** entrée `0.0.0.0/0` |
+| IP publique OK, Vercel `/health` 502 | IP obsolète dans `vercel.json` | Mettre à jour l'IP + redéployer |
+| `/health` OK, `/api/analyze-pitch` 502 | Timeout backend | Vérifier logs Docker ; Groq &lt; 2 min |
+
+```bash
+sudo ufw allow 8088/tcp   # si ufw actif
+```
+
+## 7. HTTPS (recommandé en prod)
 
 Exposez le port 8088 derrière **Nginx** ou **Caddy** sur le même EC2 avec Let's Encrypt, puis utilisez `https://api.domaine.com` dans `VITE_API_URL`.
 
@@ -82,7 +112,7 @@ api.domaine.com {
 }
 ```
 
-## 7. Mise à jour
+## 8. Mise à jour
 
 ```bash
 git pull
