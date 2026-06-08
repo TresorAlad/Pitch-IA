@@ -588,10 +588,34 @@ body {
   }
 }
 
-/* Très petit écran : colonnes plus serrées */
+/* Très petit écran : colonnes plus serrées et défilement autorisé */
 @media (max-width: 720px) {
+  .app-shell--fixed {
+    height: auto;
+    max-height: none;
+    overflow: visible;
+  }
+
+  .app-shell__main--fixed {
+    overflow: visible;
+  }
+
   .landing-wrap {
     flex-direction: column;
+    height: auto;
+    max-height: none;
+    overflow: visible;
+  }
+
+  .app-shell--fixed .landing-wrap {
+    height: auto;
+    max-height: none;
+  }
+
+  .landing-form {
+    height: auto;
+    max-height: none;
+    overflow: visible;
   }
 
   .hero-panel {
